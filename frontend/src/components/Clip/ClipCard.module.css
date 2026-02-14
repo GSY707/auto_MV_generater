@@ -1,0 +1,95 @@
+.card {
+  display: flex;
+  gap: 20px;
+  padding: 16px;
+}
+
+.artwork {
+  position: relative;
+  width: 160px;
+  height: 160px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--bg-tertiary), var(--bg-secondary));
+  flex-shrink: 0;
+}
+
+.artwork img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.playBtn {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.4);
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.artwork:hover .playBtn {
+  opacity: 1;
+}
+
+.playIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 20px;
+  box-shadow: 0 4px 16px var(--accent-glow);
+}
+
+.info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.title {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.tags {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.meta {
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.actionBtn {
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+  transition: all var(--transition-fast);
+}
+
+.actionBtn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}

@@ -1,0 +1,14 @@
+.layout {
+  display: flex;
+  min-height: 100vh;
+  background: var(--bg-primary);
+}
+
+.main {
+  flex: 1;
+  margin-left: var(--sidebar-width);
+  padding: 32px 40px;
+  padding-bottom: calc(var(--player-height) + 32px);
+  min-height: 100vh;
+  overflow-y: auto;
+}

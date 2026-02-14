@@ -1,0 +1,7 @@
+cd c:\skzy\Antigravity\music\frontend
+npm run dev
+
+cd c:\skzy\Antigravity\music
+python -m api.run
+
+http://localhost:5173

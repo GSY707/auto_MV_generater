@@ -1,0 +1,55 @@
+# 环境变量
+.env
+
+# 输出目录
+/output
+/logs
+
+# API文档
+/google API文档
+/API文档
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyc
+*.pyo
+*.pyd
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# 虚拟环境
+venv/
+env/
+ENV/
+.venv/
+
+# Node.js / Frontend
+node_modules/
+dist/
+.vite/
+.cache/
+
+# 日志文件
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 操作系统
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 临时文件
+*.tmp
+*.temp
+_temp_*.py
