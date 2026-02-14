@@ -1,0 +1,187 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # 当推送 v 开头的 tag 时触发
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows-x64
+            archive_ext: zip
+          - os: ubuntu-latest
+            platform: linux-x64
+            archive_ext: zip
+
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Python dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build frontend
+        working-directory: frontend
+        run: |
+          npm install
+          npm run build
+
+      - name: Build backend with PyInstaller
+        run: pyinstaller --clean server.spec
+
+      - name: Assemble release package (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $release = "auto_MV_generater-${{ github.ref_name }}-${{ matrix.platform }}"
+          $dir = "release/$release"
+          New-Item -ItemType Directory -Force -Path $dir
+
+          # Copy server binary
+          Copy-Item -Recurse dist/server $dir/server
+
+          # Copy frontend dist
+          New-Item -ItemType Directory -Force -Path "$dir/frontend"
+          Copy-Item -Recurse frontend/dist "$dir/frontend/dist"
+
+          # Copy docs
+          Copy-Item README.md $dir/ -ErrorAction SilentlyContinue
+          Copy-Item LICENSE $dir/ -ErrorAction SilentlyContinue
+
+          # Create output and logs dirs
+          New-Item -ItemType Directory -Force -Path "$dir/output"
+          New-Item -ItemType Directory -Force -Path "$dir/logs"
+
+          # Create start.bat
+          @"
+          @echo off
+          chcp 65001 >nul
+          title AI Music Agent
+          if not exist "%~dp0.env" (
+              echo [ERROR] .env file not found. Copy .env.example to .env first.
+              pause
+              exit /b 1
+          )
+          cd /d "%~dp0"
+          start "AI-Music-Server" server\server.exe
+          timeout /t 3 /nobreak >nul
+          start http://localhost:5000
+          echo Server running at http://localhost:5000
+          "@ | Out-File -Encoding utf8 "$dir/start.bat"
+
+          # Create stop.bat
+          @"
+          @echo off
+          taskkill /IM server.exe /F >nul 2>&1
+          echo Server stopped.
+          "@ | Out-File -Encoding utf8 "$dir/stop.bat"
+
+          # Create .env.example
+          python -c "
+          import build
+          build._create_env_example(__import__('pathlib').Path('$dir'))"
+
+          # Create zip
+          Compress-Archive -Path "release/$release" -DestinationPath "release/$release.zip"
+
+      - name: Assemble release package (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          RELEASE="auto_MV_generater-${{ github.ref_name }}-${{ matrix.platform }}"
+          DIR="release/$RELEASE"
+          mkdir -p "$DIR"
+
+          # Copy server binary
+          cp -r dist/server "$DIR/server"
+          chmod +x "$DIR/server/server"
+
+          # Copy frontend dist
+          mkdir -p "$DIR/frontend"
+          cp -r frontend/dist "$DIR/frontend/dist"
+
+          # Copy docs
+          cp README.md "$DIR/" 2>/dev/null || true
+          cp LICENSE "$DIR/" 2>/dev/null || true
+
+          # Create output and logs dirs
+          mkdir -p "$DIR/output" "$DIR/logs"
+
+          # Create start.sh
+          cat > "$DIR/start.sh" << 'SCRIPT'
+          #!/bin/bash
+          SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+          cd "$SCRIPT_DIR"
+          if [ ! -f .env ]; then
+              echo "[ERROR] .env not found. Copy .env.example to .env first."
+              exit 1
+          fi
+          ./server/server &
+          echo $! > .server.pid
+          sleep 3
+          echo "Server running at http://localhost:5000"
+          SCRIPT
+          chmod +x "$DIR/start.sh"
+
+          # Create stop.sh
+          cat > "$DIR/stop.sh" << 'SCRIPT'
+          #!/bin/bash
+          SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+          if [ -f "$SCRIPT_DIR/.server.pid" ]; then
+              kill $(cat "$SCRIPT_DIR/.server.pid") 2>/dev/null
+              rm "$SCRIPT_DIR/.server.pid"
+              echo "Server stopped."
+          fi
+          SCRIPT
+          chmod +x "$DIR/stop.sh"
+
+          # Create .env.example
+          python -c "
+          import build
+          build._create_env_example(__import__('pathlib').Path('$DIR'))"
+
+          # Create zip
+          cd release && zip -r "$RELEASE.zip" "$RELEASE"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform }}
+          path: release/*.zip
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: artifacts/**/*.zip

@@ -4,10 +4,31 @@ Flask application factory.
 Creates and configures the Flask app with CORS and all route blueprints.
 """
 
-from flask import Flask, jsonify
+import os
+import sys
+from pathlib import Path
+
+from flask import Flask, jsonify, send_from_directory
 from flask_cors import CORS
 
 from src.config import get_config
+
+
+def _get_frontend_dist() -> Path | None:
+    """Locate the frontend/dist directory.
+
+    Works both in development and when bundled by PyInstaller.
+    """
+    # When frozen (PyInstaller), look relative to the executable
+    if getattr(sys, "frozen", False):
+        base = Path(sys.executable).parent.parent  # server/ -> release root
+    else:
+        base = Path(__file__).parent.parent  # api/ -> project root
+
+    dist = base / "frontend" / "dist"
+    if dist.is_dir():
+        return dist
+    return None
 
 
 def create_app() -> Flask:
@@ -19,7 +40,7 @@ def create_app() -> Flask:
     get_config()  # ensure .env is loaded
 
     app = Flask(__name__)
-    CORS(app, origins=["http://localhost:5173"])
+    CORS(app, origins=["http://localhost:5173", "http://localhost:5000"])
 
     from .routes.generate import generate_bp
     from .routes.tasks import tasks_bp
@@ -55,5 +76,18 @@ def create_app() -> Flask:
     if is_reloader_child or not use_reloader:
         from .services.task_recovery import recover_interrupted_tasks
         recover_interrupted_tasks()
+
+    # --- Serve frontend static files (production / binary mode) ---
+    frontend_dist = _get_frontend_dist()
+    if frontend_dist:
+        @app.route("/", defaults={"path": ""})
+        @app.route("/<path:path>")
+        def serve_frontend(path):
+            # If the path matches a real file in dist/, serve it
+            file_path = frontend_dist / path
+            if path and file_path.is_file():
+                return send_from_directory(str(frontend_dist), path)
+            # Otherwise serve index.html (SPA fallback)
+            return send_from_directory(str(frontend_dist), "index.html")
 
     return app

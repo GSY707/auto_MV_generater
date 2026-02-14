@@ -22,6 +22,10 @@ dist/
 build/
 *.egg
 
+# PyInstaller
+*.spec.bak
+release/
+
 # 虚拟环境
 venv/
 env/
